@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { UserWarning } from './UserWarning';
 import { USER_ID } from './api/todos';
 import { Todo } from './types/Todo';
@@ -9,11 +9,13 @@ import { useEffect } from 'react';
 import { getTodos } from './api/todos';
 import * as postService from './api/todos';
 
+type Filter = 'all' | 'active' | 'completed';
+
 export const App: React.FC = () => {
   const [posts, setPosts] = useState<Todo[]>([]);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<Filter>('all');
   const draft = { title: title.trim(), completed: false };
   const allCompleted = posts.length > 0 && posts.every(post => post.completed);
   const hasTodos = posts.length > 0;
@@ -23,16 +25,20 @@ export const App: React.FC = () => {
     setPosts(posts.filter(post => !post.completed));
   };
 
+  const todosCounter = posts.filter(post => !post.completed);
+
+  const hideErrorTimer = useRef<number | null>(null);
+
   const isTitleEmpty = title.trim() === '';
 
   const [errorMessage, setErrorMessage] = useState('');
 
   const [deletingTodoId, setDeletingTodoId] = useState<number | null>(null);
-  const onDelete = async (id: number) => {
-    setDeletingTodoId(id);
+  const onDelete = async (postId: number) => {
+    setDeletingTodoId(postId);
     try {
-      await postService.deletePost(id);
-      setPosts(currentPosts => currentPosts.filter(post => post.id !== id));
+      await postService.deletePost(postId);
+      setPosts(currentPosts => currentPosts.filter(post => post.id !== postId));
     } catch (error) {
       setErrorMessage('Unable to delete todo');
       setTimeout(() => setErrorMessage(''), 3000);
@@ -40,6 +46,22 @@ export const App: React.FC = () => {
       setDeletingTodoId(null);
     }
   };
+
+  const handleFilter =
+    (next: Filter) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      setFilter(next);
+      setErrorMessage('');
+    };
+
+  function showError(msg: string) {
+    if (hideErrorTimer.current) {
+      window.clearTimeout(hideErrorTimer.current);
+    }
+
+    setErrorMessage(msg);
+    hideErrorTimer.current = window.setTimeout(() => setErrorMessage(''), 3000);
+  }
 
   useEffect(() => {
     if (!USER_ID) {
@@ -51,11 +73,18 @@ export const App: React.FC = () => {
     setErrorMessage('');
     getTodos()
       .then(setPosts)
-      .catch(() => setErrorMessage('Unable to load todos'))
+      .catch(() => showError('Unable to load todos'))
       .finally(() => {
         clearTimeout(delayTimer);
         setTimeout(() => setLoading(false), 500);
       });
+
+    return () => {
+      clearTimeout(delayTimer);
+      if (hideErrorTimer.current) {
+        clearTimeout(hideErrorTimer.current);
+      }
+    };
   }, []);
 
   const visibleTodos = posts.filter(todo => {
@@ -80,7 +109,9 @@ export const App: React.FC = () => {
     }
 
     setPosts(current => {
-      const maxId = current.length ? Math.max(...current.map(p => p.id)) : 0;
+      const maxId = current.length
+        ? Math.max(...current.map(post => post.id))
+        : 0;
       const newTodo = { ...draft, id: maxId + 1 };
 
       return [...current, newTodo];
@@ -91,8 +122,8 @@ export const App: React.FC = () => {
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
 
   async function handleTodoStatus(id: number, checked: boolean) {
-    setErrorMessage(''); // Hide previous notifications
-    setUpdatingIds(prev => [...prev, id]); // Mark as updating
+    setErrorMessage('');
+    setUpdatingIds(prev => [...prev, id]);
     try {
       const current = posts.find(post => post.id === id);
 
@@ -100,10 +131,11 @@ export const App: React.FC = () => {
         return;
       }
 
-      const payload = { ...current, completed: checked };
-      const serverTodo = await postService.updateTodo(id, payload);
+      const serverTodo = await postService.updateTodo(id, {
+        completed: checked,
+      });
 
-      setPosts(prev => prev.map(p => (p.id === id ? serverTodo : p)));
+      setPosts(prev => prev.map(post => (post.id === id ? serverTodo : post)));
     } catch (error) {
       setErrorMessage('Unable to update todo');
     } finally {
@@ -154,69 +186,57 @@ export const App: React.FC = () => {
         </header>
 
         <section className="todoapp__main" data-cy="TodoList">
-          {posts.map(post => (
-            <>
-              <div data-cy="Todo" className="todo">
-                <label className="todo__status-label">
-                  <input
-                    data-cy="TodoStatus"
-                    type="checkbox"
-                    className="todo__status"
-                    onChange={event =>
-                      handleTodoStatus(post.id, event.target.checked)
-                    }
-                    checked={post.completed}
-                    disabled={updatingIds.includes(post.id)}
-                  />
-                </label>
-
-                <span data-cy="TodoTitle" className="todo__title">
-                  {post.title}
-                </span>
-                <ul>
-                  {visibleTodos.map(todo => (
-                    <li
-                      key={todo.id}
-                      className={`todo${todo.completed ? 'completed' : ''}`}
-                    >
-                      <button
-                        type="button"
-                        aria-label="Delete todo"
-                        className="todo__remove"
-                        data-cy="TodoDelete"
-                        onClick={() => onDelete(todo.id)}
-                        disabled={deletingTodoId === todo.id}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* overlay will cover the todo while it is being deleted or updated */}
-                <div data-cy="TodoLoader" className="modal overlay">
-                  <div className="modal-background has-background-white-ter" />
-                  <div className="loader" />
-                </div>
+          {visibleTodos.map(post => (
+            <div
+              data-cy="Todo"
+              key={post.id}
+              className={`todo ${post.completed ? 'completed' : ''}`}
+            >
+              <label className="todo__status-label">
+                <input
+                  data-cy="TodoStatus"
+                  type="checkbox"
+                  className="todo__status"
+                  onChange={event =>
+                    handleTodoStatus(post.id, event.target.checked)
+                  }
+                  checked={post.completed}
+                  disabled={updatingIds.includes(post.id)}
+                />
+              </label>
+              <span data-cy="TodoTitle" className="todo__title">
+                {post.title}
+              </span>
+              <button
+                type="button"
+                aria-label="Delete todo"
+                className="todo__remove"
+                data-cy="TodoDelete"
+                onClick={() => onDelete(post.id)}
+                disabled={deletingTodoId === post.id}
+              >
+                ×
+              </button>
+              {/* overlay will cover the todo while it is being deleted or updated */}
+              <div data-cy="TodoLoader" className="modal overlay">
+                <div className="modal-background has-background-white-ter" />
+                <div className="loader" />
               </div>
-            </>
+            </div>
           ))}
         </section>
 
         {hasTodos ? (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
-              {posts.length} items left
+              {todosCounter.length} items left
             </span>
 
             <nav className="filter" data-cy="Filter">
               <a
                 href="#/"
-                className="filter__link"
-                onClick={event => {
-                  event.preventDefault();
-                  setFilter('all');
-                }}
+                className={`filter__link ${filter === 'all' ? 'selected' : ''}`}
+                onClick={handleFilter('all')}
                 data-cy="FilterLinkAll"
               >
                 All
@@ -224,24 +244,18 @@ export const App: React.FC = () => {
 
               <a
                 href="#/active"
-                className="filter__link"
+                className={`filter__link ${filter === 'active' ? 'selected' : ''}`}
                 data-cy="FilterLinkActive"
-                onClick={event => {
-                  event.preventDefault();
-                  setFilter('active');
-                }}
+                onClick={handleFilter('active')}
               >
                 Active
               </a>
 
               <a
                 href="#/completed"
-                className="filter__link"
+                className={`filter__link ${filter === 'completed' ? 'selected' : ''}`}
                 data-cy="FilterLinkCompleted"
-                onClick={event => {
-                  event.preventDefault();
-                  setFilter('completed');
-                }}
+                onClick={handleFilter('completed')}
               >
                 Completed
               </a>

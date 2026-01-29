@@ -12,9 +12,9 @@ export const createTodo = (title: string, userId: number) => {
 };
 
 export const deletePost = (postId: number) => {
-  return client.delete(`/todos?userId=${postId}`);
+  return client.delete(`/todos/${postId}`);
 };
 
 export const updateTodo = (id: number, updates: Partial<Todo>) => {
-  return client.patch<Todo>('/todos', { id, updates });
+  return client.patch<Todo>(`/todos/${id}`, updates);
 };
