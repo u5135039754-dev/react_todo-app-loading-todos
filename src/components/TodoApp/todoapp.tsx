@@ -1,5 +1,5 @@
 import '../../styles/todoapp.scss';
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import * as postService from '../../api/todos';
 import { USER_ID } from '../../api/todos';
 import { Todo } from '../../types/Todo';
@@ -19,38 +19,29 @@ export const TodoApp: React.FC<Props> = ({
 }) => {
   const [title, setTitle] = useState('');
   const isTitleEmpty = title.trim() === '';
-  const draft = { title: title.trim(), completed: false };
   const allCompleted = posts.length > 0 && posts.every(post => post.completed);
   const hasPosts = posts.length > 0;
 
-  function handleAddPost(event: React.FormEvent) {
+  async function handleAddPost(event: React.FormEvent) {
     event.preventDefault();
-    postService.createTodo(title, USER_ID);
     const value = title.trim();
 
     if (!value) {
+      setErrorMessage('Title should not be empty');
+
       return;
     }
 
-    setPosts(current => {
-      const maxId = current.length
-        ? Math.max(...current.map(post => post.id))
-        : 0;
-      const newTodo = { ...draft, id: maxId + 1 };
+    setErrorMessage('');
+    try {
+      const newTodo = await postService.createTodo(value, USER_ID);
 
-      return [...current, newTodo];
-    });
-    setTitle('');
+      setPosts(current => [...current, newTodo]);
+      setTitle('');
+    } catch {
+      setErrorMessage('Unable to add a todo');
+    }
   }
-
-  useEffect(() => {
-    postService
-      .getTodos()
-      .then(setPosts)
-      .catch(() => {
-        setErrorMessage('Unable to add todos');
-      });
-  }, [setPosts]);
 
   return (
     <header className="todoapp__header">

@@ -25,7 +25,7 @@ export const App: React.FC = () => {
       .then(setPosts)
       .catch(() => setErrorMessage('Unable to load todos'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [posts, setPosts]);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -42,29 +42,34 @@ export const App: React.FC = () => {
           setErrorMessage={setErrorMessage}
           loading={loading}
         />
-        <Todo
-          posts={posts}
-          setErrorMessage={setErrorMessage}
-          setPosts={setPosts}
-          filter={filter}
-        />
 
-        <Filter
-          setErrorMessage={setErrorMessage}
-          posts={posts}
-          filter={filter}
-          setPosts={setPosts}
-          setFilter={setFilter}
-        />
+        {hasTodos && (
+          <>
+            <Todo
+              posts={posts}
+              setErrorMessage={setErrorMessage}
+              setPosts={setPosts}
+              filter={filter}
+            />
+            <Filter
+              setErrorMessage={setErrorMessage}
+              posts={posts}
+              filter={filter}
+              setPosts={setPosts}
+              setFilter={setFilter}
+            />
+          </>
+        )}
       </div>
       {!hasTodos && (
-        <Index
-          errorMessage={errorMessage}
-          setLoading={setLoading}
-          setPosts={setPosts}
-          setErrorMessage={setErrorMessage}
-          posts={posts}
-        />
+        <>
+          <Index
+            errorMessage={errorMessage}
+            setLoading={setLoading}
+            setErrorMessage={setErrorMessage}
+            posts={posts}
+          />
+        </>
       )}
     </div>
   );
