@@ -13,7 +13,7 @@ import { Index } from './components/Index/index';
 export const App: React.FC = () => {
   const [posts, setPosts] = useState<Todos[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<Filters>();
+  const [filter, setFilter] = useState<Filters>(Filters.all);
 
   const [errorMessage, setErrorMessage] = useState('');
   const hasTodos = posts.length > 0;
@@ -25,7 +25,7 @@ export const App: React.FC = () => {
       .then(setPosts)
       .catch(() => setErrorMessage('Unable to load todos'))
       .finally(() => setLoading(false));
-  }, [posts, setPosts]);
+  }, []);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -61,16 +61,14 @@ export const App: React.FC = () => {
           </>
         )}
       </div>
-      {!hasTodos && (
-        <>
-          <Index
-            errorMessage={errorMessage}
-            setLoading={setLoading}
-            setErrorMessage={setErrorMessage}
-            posts={posts}
-          />
-        </>
-      )}
+      <>
+        <Index
+          errorMessage={errorMessage}
+          setLoading={setLoading}
+          setErrorMessage={setErrorMessage}
+          posts={posts}
+        />
+      </>
     </div>
   );
 };

@@ -2,12 +2,13 @@ import '../../styles/filter.scss';
 import { Filter as Filters, Todo } from '../../types/Todo';
 import { Dispatch, SetStateAction } from 'react';
 import React from 'react';
+import * as postService from '../../api/todos';
 
 type Props = {
   posts: Todo[];
   filter: Filters | undefined;
   setPosts: Dispatch<SetStateAction<Todo[]>>;
-  setFilter: React.Dispatch<React.SetStateAction<Filters | undefined>>;
+  setFilter: React.Dispatch<React.SetStateAction<Filters>>;
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
 };
 
@@ -22,8 +23,17 @@ export const Filter: React.FC<Props> = ({
 }) => {
   const anyCompleted = posts.some(post => post.completed);
   const todosCounter = posts.filter(post => !post.completed);
-  const clearCompleted = () => {
-    setPosts(posts.filter(post => !post.completed));
+  const clearCompleted = async () => {
+    const completedTodos = posts.filter(todo => todo.completed);
+
+    try {
+      await Promise.all(
+        completedTodos.map(todo => postService.deletePost(todo.id)),
+      );
+      setPosts(posts.filter(todo => !todo.completed));
+    } catch {
+      setErrorMessage('Unable to delete todo');
+    }
   };
 
   const handleFilter =

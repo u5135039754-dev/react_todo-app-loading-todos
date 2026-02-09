@@ -27,7 +27,7 @@ export const Index: React.FC<Props> = ({
         clearTimeout(hideErrorTimer.current);
       }
     };
-  }, []);
+  }, [setLoading]);
 
   return (
     <div
