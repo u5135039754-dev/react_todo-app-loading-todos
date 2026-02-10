@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import '../../styles/index.scss';
 import { Todo } from '../../types/Todo';
 
 type Props = {
@@ -9,7 +8,7 @@ type Props = {
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export const Index: React.FC<Props> = ({
+export const ErrorNotification: React.FC<Props> = ({
   setErrorMessage,
   errorMessage,
   setLoading,

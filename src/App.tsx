@@ -8,7 +8,8 @@ import { Filter as Filters, Todo as Todos } from './types/Todo';
 import { TodoApp } from './components/TodoApp/todoapp';
 import { Todo } from './components/Todo/todo';
 import { Filter } from './components/Filter/filter';
-import { Index } from './components/Index/index';
+// eslint-disable-next-line max-len
+import { ErrorNotification } from './components/ErrorNotification/ErrorNotification';
 
 export const App: React.FC = () => {
   const [posts, setPosts] = useState<Todos[]>([]);
@@ -62,7 +63,7 @@ export const App: React.FC = () => {
         )}
       </div>
       <>
-        <Index
+        <ErrorNotification
           errorMessage={errorMessage}
           setLoading={setLoading}
           setErrorMessage={setErrorMessage}
